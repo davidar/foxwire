@@ -21,13 +21,12 @@ const VERSION = browser.runtime.getManifest().version;
 const ffVersion = browser.runtime.getBrowserInfo().then((i) => i.version, () => "?");
 const BUNDLES = ["snapshot", "actions", "dialog", "evaluate"] as const;
 type Bundle = (typeof BUNDLES)[number];
-const sources = Object.fromEntries(
-  BUNDLES.map((n) => {
-    const p = fetch(browser.runtime.getURL(`dist/inject/${n}.js`)).then((r) => (r.ok ? r.text() : Promise.reject(new Error(`dist/inject/${n}.js missing; rebuild the extension`))));
-    p.catch(() => {}); // surfaced as INJECT_FAILED on first use
-    return [n, p];
-  }),
-) as Record<Bundle, Promise<string>>;
+// Read per call, so a staged rebuild of an inject bundle takes effect without reloading the extension.
+const source = (n: Bundle): Promise<string> =>
+  fetch(browser.runtime.getURL(`dist/inject/${n}.js`)).then(
+    (r) => (r.ok ? r.text() : Promise.reject(new Error(`dist/inject/${n}.js missing; rebuild the extension`))),
+    () => Promise.reject(new Error(`dist/inject/${n}.js missing; rebuild the extension`)),
+  );
 
 /** `since` marks the last change of connected/paired, not of lastError (which repeats while retrying). */
 function setState(patch: Partial<typeof state>): void {
@@ -409,7 +408,7 @@ async function injectFrames(tabId: number, bundle: Bundle, args: P, o: InjectOpt
   const callId = randomHex(12);
   // The inject sees a slightly shorter budget so its own TIMEOUT (e.g. wait_for's message) wins the race.
   const budget = Math.max(500, o.timeoutMs - 500);
-  const code = `globalThis.__fw_args=${JSON.stringify({ ...args, __call: callId, timeoutMs: budget })};\n${await sources[bundle]}`;
+  const code = `globalThis.__fw_args=${JSON.stringify({ ...args, __call: callId, timeoutMs: budget })};\n${await source(bundle)}`;
   const replies = new Map<number, FrameReply>();
   let expected = Infinity;
   let wake = () => {};
