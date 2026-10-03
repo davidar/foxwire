@@ -133,6 +133,13 @@ server registered as `foxwire` (so `mcp__foxwire__<tool>`). Tick each box; note 
       `sleep {"ms": 1500}` → `slept 1500 ms`.
 - [ ] On a combobox whose popup is open, `take_snapshot` shows `controls=<uid>` on it.
 
+## 13. Field-report fixes
+
+- [ ] A form with `<input readonly>` and a disabled `<fieldset>`: `take_snapshot` shows `readonly` / `disabled`.
+- [ ] `click_by_uid` on a `target=_blank` link → `after: opened tab <id> (<url or loading>)`.
+- [ ] A page with an ungranted Stripe iframe: its snapshot note shows `https://js.stripe.com/v3/…?…`, not the fragment.
+- [ ] `wait_for {"change": true, "timeoutMs": 4000}` on a quiet page → `TIMEOUT` "… within 4000 ms".
+
 ## Optional
 
 - [ ] `evaluate_script {"function": "() => document.title"}` → `DISABLED` while off; enable it in options, retry →

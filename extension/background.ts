@@ -1,8 +1,8 @@
 // foxwire background (MV2, persistent): dials the loopback broker, authenticates with HMAC, and serves
 // ExtMethods with tabs.* / executeScript / captureTab. docs/DESIGN.md §2–§7. No content_scripts, ever.
 import {
-  DEFAULT_PORT, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, PROTOCOL_VERSION, capIntent, fwError, isFwError, parseFrame, parseUid,
-  type ExtMethods, type ExtStatus, type FwError, type RequestFrame, type ResponseFrame,
+  DEFAULT_PORT, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, PROTOCOL_VERSION, capIntent, fwError, isFwError, parseFrame, parseUid, shortUrl,
+  type ActionResult, type ExtMethods, type ExtStatus, type FwError, type RequestFrame, type ResponseFrame,
   type ScreenshotResult, type SnapshotResult, type TabInfo, type WaitUntil,
 } from "../shared/protocol.ts";
 import { hmacHex, randomHex } from "../shared/hmac.ts";
@@ -504,7 +504,7 @@ async function snapshot(p: P, timeoutMs: number): Promise<SnapshotResult> {
     if (!p.selector && f.frameId !== 0 && !replies.has(f.frameId) && /^https?:/.test(f.url)) {
       const { pattern, origin } = grantPattern(f.url);
       const why = (await hasGrant(pattern)) ? "no answer" : `no host grant for ${origin}; the user can grant ${pattern} in the foxwire options page`;
-      lines.push(`- iframe [url=${JSON.stringify(f.url)} not snapshotted: ${why}]`);
+      lines.push(`- iframe [url=${JSON.stringify(shortUrl(f.url))} not snapshotted: ${why}]`);
     }
   }
   return { url: top.url, title: top.title, lines, frames: replies.size, truncated };
@@ -544,19 +544,43 @@ async function screenshot(p: P, timeoutMs: number): Promise<ScreenshotResult> {
 const ACTION_OPS = ["click", "hover", "fill", "type", "press", "selectOption", "upload"] as const;
 /** Frame that last received a uid-targeted action, per tab: uid-less press/type follow focus into it. */
 const focusFrame = new Map<number, number>();
+/** Recently created tabs, so an action that opens one can say so (DESIGN §5). */
+const created: { tab: browser.tabs.Tab; at: number }[] = [];
+const QUIET = "no visible change within 400 ms"; // actions.ts withEffect wording
+
+/** A tab opened by tabId since `since`: by openerTabId, else (no opener recorded) any new tab in the same window. */
+async function openedTab(tabId: number, since: number, waitMs: number): Promise<string> {
+  const win = (await browser.tabs.get(tabId).catch(() => undefined))?.windowId;
+  const find = () => created.find(({ tab, at }) => at >= since && tab.id !== tabId && (tab.openerTabId === undefined ? tab.windowId === win : tab.openerTabId === tabId));
+  for (let i = 0; !find() && i < waitMs / 100; i++) await sleep(100);
+  const hit = find()?.tab;
+  if (!hit) return "";
+  const t = await browser.tabs.get(hit.id!).catch(() => hit);
+  return `opened tab ${t.id} (${t.url && t.url !== "about:blank" ? await shownUrl(t.url) : "loading"})`;
+}
+
 function action(op: string) {
   return async (p: P, timeoutMs: number) => {
     const tabId = needTab(p);
+    const since = Date.now();
     const { tabId: _t, timeoutMs: _m, intent: _i, ...rest } = p;
     const run = (frameId: number, uid?: string) => inject(tabId, "actions", { ...rest, op, uid }, { frameId, timeoutMs });
-    if (p.uid !== undefined) {
-      const where = resolveUid(tabId, p.uid);
-      if (!["hover", "pageText", "waitFor"].includes(op)) focusFrame.set(tabId, where.frameId);
-      return run(where.frameId, where.uid);
-    }
-    const frameId = op === "press" || op === "type" ? (focusFrame.get(tabId) ?? 0) : 0;
-    // The remembered frame may be gone after a navigation; fall back to the top frame.
-    return frameId ? run(frameId).catch(() => (focusFrame.delete(tabId), run(0))) : run(0);
+    const go = () => {
+      if (p.uid !== undefined) {
+        const where = resolveUid(tabId, p.uid);
+        if (!["hover", "pageText", "waitFor"].includes(op)) focusFrame.set(tabId, where.frameId);
+        return run(where.frameId, where.uid);
+      }
+      const frameId = op === "press" || op === "type" ? (focusFrame.get(tabId) ?? 0) : 0;
+      // The remembered frame may be gone after a navigation; fall back to the top frame.
+      return frameId ? run(frameId).catch(() => (focusFrame.delete(tabId), run(0))) : run(0);
+    };
+    if (!(op === "click" || op === "press" || (op === "type" && p.submit))) return go();
+    const r = (await go()) as ActionResult;
+    const quiet = !!r?.note?.includes(QUIET); // only a quiet page is worth waiting a little longer for a new tab
+    const opened = await openedTab(tabId, since, quiet ? 600 : 0);
+    if (opened && r.note) r.note = quiet ? r.note.replace(QUIET, opened) : `${r.note}\nafter: ${opened}`;
+    return r;
   };
 }
 
@@ -598,9 +622,9 @@ const METHODS: { [K in keyof ExtMethods]: (p: P, timeoutMs: number) => Promise<E
   snapshot,
   /** text/selector/change: poll every frame, first match wins; uid: only the uid's frame. */
   async waitFor(p, timeoutMs) {
-    if (p.uid !== undefined) return (await action("waitFor")(p, timeoutMs)) as ExtMethods["waitFor"]["result"];
+    if (p.uid !== undefined) return (await action("waitFor")({ ...p, requestedMs: timeoutMs }, timeoutMs)) as ExtMethods["waitFor"]["result"];
     const tabId = needTab(p);
-    const replies = await everyFrame(tabId, "actions", { op: "waitFor", text: p.text, selector: p.selector, change: p.change }, timeoutMs, true);
+    const replies = await everyFrame(tabId, "actions", { op: "waitFor", text: p.text, selector: p.selector, change: p.change, requestedMs: timeoutMs }, timeoutMs, true);
     const hit = [...replies].find(([, x]) => x.ok);
     const r = hit?.[1] ?? replies.get(0);
     if (!r) throw fwError("TIMEOUT", `wait_for: no frame answered within ${timeoutMs} ms`);
@@ -644,6 +668,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
   frameAliases.delete(tabId);
   send({ event: "tab.removed", params: { tabId } });
 });
+browser.tabs.onCreated.addListener((tab) => void (created.push({ tab, at: Date.now() }), created.length > 20 && created.shift()));
 browser.webNavigation.onCommitted.addListener((d) => void (d.frameId === 0 && frameAliases.delete(d.tabId)));
 browser.permissions.onAdded.addListener(() => void Promise.all([sendStatus(), recheckAsks()]));
 browser.permissions.onRemoved.addListener(() => void sendStatus());

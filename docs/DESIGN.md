@@ -141,7 +141,10 @@ then poll it for up to 400 ms after, stopping at the first difference, and appen
 target's or focused field's value went to empty), `after: no visible change within 400 ms` (not a failure: slow
 effects are normal, do not retry), or `after: the page navigated or the frame was replaced`. For the last one the
 inject messages the background as soon as the events are dispatched; if the frame then gives no answer within 2 s
-it has unloaded, and the call succeeds with that note instead of failing with `TIMEOUT`.
+it has unloaded, and the call succeeds with that note instead of failing with `TIMEOUT`. A click, press or
+`type_text` submit that opens a tab (`tabs.onCreated` with `openerTabId` = the acted tab, or with no opener in the
+same window, from dispatch until ≤600 ms after a quiet result) adds `after: opened tab <tabId> (<url or loading>)`,
+replacing the "no visible change" wording. `wait_for` timeouts report the requested `timeoutMs`, not the inner budget.
 
 Every tool that targets a tab (all except `list_pages`, `select_page`, `close_page`, `status`, `sleep`) also takes an
 optional `intent`: a brief first-person note of what Claude is doing and why ("Opening the March invoice to check
@@ -176,6 +179,9 @@ Maybe-later (not v1): `console_messages`, `network_requests` (needs `webRequest`
   stale uid. The merged snapshot marks each iframe with `[frame=fK origin]`; a frame skipped for lack of a grant
   names its origin and the exact pattern to grant.
 - An expanded element whose `aria-controls`/`aria-owns` points at a targetable element gets `controls=<uid>`.
+- Form controls show `disabled` (`:disabled`, so fieldset-inherited too, or `aria-disabled=true`) and `readonly`
+  (`readOnly` or `aria-readonly=true`): fill/type will refuse those. Ungranted child frames are listed by origin +
+  pathname only (`shortUrl`), never their query or fragment.
 - A row/listitem name is truncated at about 160 chars; read its child `text` lines for the full content. Snapshot
   line count is not a change signal (use `wait_for` with `change`).
 - `maxLines` default 100, `selector` scopes the walk, `saveTo` writes the full tree to a file (mcp side).

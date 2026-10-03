@@ -123,11 +123,13 @@ function stateAttrs(el: Element, role: string): string[] {
   } else if (el instanceof HTMLIFrameElement) {
     a.push(`src=${JSON.stringify(collapse(el.src, 70))}`);
   }
-  for (const attr of ["aria-checked", "aria-selected", "aria-expanded", "aria-pressed", "aria-disabled", "aria-current", "aria-haspopup", "aria-invalid"]) {
+  for (const attr of ["aria-checked", "aria-selected", "aria-expanded", "aria-pressed", "aria-current", "aria-haspopup", "aria-invalid"]) {
     const v = el.getAttribute(attr);
     if (v !== null && v !== "false") a.push(`${attr.slice(5)}${v === "true" ? "" : `=${v}`}`);
   }
-  if ((el as HTMLButtonElement).disabled === true) a.push("disabled");
+  // :disabled also covers controls inside a disabled <fieldset>; readonly fields refuse fill/type.
+  if (el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") a.push("disabled");
+  if ((el as HTMLInputElement).readOnly === true || el.getAttribute("aria-readonly") === "true") a.push("readonly");
   if (el instanceof HTMLDetailsElement) a.push(el.open ? "expanded" : "collapsed");
   // An open combobox/menu button names the popup it controls, when that popup is itself targetable.
   const ctl = el.getAttribute("aria-expanded") === "true" ? (el.getAttribute("aria-controls") ?? el.getAttribute("aria-owns"))?.trim().split(/\s+/)[0] : undefined;

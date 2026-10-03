@@ -14,7 +14,7 @@ type Args =
   | { op: "press"; key: string; modifiers?: string[] }
   | { op: "selectOption"; uid: string; values: string[] }
   | { op: "upload"; uid: string; files: { name: string; type: string; base64: string }[] }
-  | { op: "waitFor"; text?: string; selector?: string; uid?: string; change?: boolean; timeoutMs?: number }
+  | { op: "waitFor"; text?: string; selector?: string; uid?: string; change?: boolean; timeoutMs?: number; requestedMs?: number }
   | { op: "pageText"; maxLength?: number; selector?: string; uid?: string }
   | { op: "rect"; uid?: string; fullPage?: boolean; viewport?: boolean };
 
@@ -219,7 +219,7 @@ function upload(el: Element, files: { name: string; type: string; base64: string
   return `set ${el.files?.length ?? 0} file(s) on ${d}: ${files.map((f) => f.name).join(", ")}`;
 }
 
-async function waitFor(a: { text?: string; selector?: string; uid?: string; change?: boolean; timeoutMs?: number }): Promise<{ elapsedMs: number; added?: string }> {
+async function waitFor(a: { text?: string; selector?: string; uid?: string; change?: boolean; timeoutMs?: number; requestedMs?: number }): Promise<{ elapsedMs: number; added?: string }> {
   const start = performance.now();
   const limit = Math.min(a.timeoutMs ?? 10_000, 60_000) - 250; // leave headroom for the background's own timer
   // change: the target's visible text (per line, whitespace collapsed); undefined while the target is absent.
@@ -253,8 +253,8 @@ async function waitFor(a: { text?: string; selector?: string; uid?: string; chan
       if (a.selector) r.matches = document.querySelectorAll(a.selector).length;
       return r;
     }
-    const ms = Math.round(performance.now() - start);
     if (performance.now() - start > limit) {
+      const ms = a.requestedMs ?? Math.round(performance.now() - start); // what the caller asked for, not the inner budget
       const what = [a.text && `text ${JSON.stringify(a.text)}`, a.selector && `selector ${JSON.stringify(a.selector)}`, a.uid && `uid ${a.uid}`].filter(Boolean).join(", ");
       if (a.change) throw new InjectError("TIMEOUT", `wait_for change: nothing changed in ${what || "the page"} within ${ms} ms`);
       throw new InjectError("TIMEOUT", `wait_for: ${what} not present after ${ms} ms`);

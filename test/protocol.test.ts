@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FwErrorImpl, fwError, isEvent, isFwError, isRequest, isResponse, parseFrame, parseUid, type Frame } from "../shared/protocol.ts";
+import { FwErrorImpl, fwError, isEvent, isFwError, isRequest, isResponse, parseFrame, parseUid, shortUrl, type Frame } from "../shared/protocol.ts";
 import { textDelta } from "../extension/inject/lib.ts";
 
 test("parseFrame: request", () => {
@@ -72,4 +72,12 @@ test("textDelta: appended suffix, else new lines, capped", () => {
   assert.equal(textDelta("a\nb\nTyping…", "a\nb\nNew reply"), "New reply");
   assert.equal(textDelta("x", "x" + "y".repeat(5000)).length, 2000);
   assert.equal(textDelta("a\nb", "b"), "");
+});
+
+test("shortUrl: origin + pathname, no query/fragment, long paths cut", () => {
+  assert.equal(shortUrl("https://js.stripe.com/v3/m-outer-93afeeb17bc37e711759584dbfc50d47.html#url=https%3A%2F%2Fx&title=y"), "https://js.stripe.com/v3/m-outer-93afeeb17bc37e711759584dbfc50d47.html?…");
+  assert.equal(shortUrl("https://a.test/x"), "https://a.test/x");
+  const long = shortUrl("https://a.test/" + "p".repeat(100));
+  assert.equal(long, "https://a.test/" + "p".repeat(58) + "…");
+  assert.equal(shortUrl("not a url"), "not a url");
 });

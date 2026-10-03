@@ -165,6 +165,12 @@ export interface ExtStatus {
 export type WithIntent<T> = T & { intent?: string };
 export const INTENT_MAX = 200;
 export const capIntent = (s: string): string => (s.length > INTENT_MAX ? s.slice(0, INTENT_MAX - 1) + "…" : s);
+/** Origin + pathname (≤60 chars), no query or fragment: for frame URLs that would otherwise flood every snapshot. */
+export function shortUrl(raw: string): string {
+  const u = URL.parse(raw);
+  if (!u) return raw.slice(0, 80);
+  return u.origin + (u.pathname.length > 60 ? u.pathname.slice(0, 59) + "…" : u.pathname) + (u.search || u.hash ? "?…" : "");
+}
 
 /** Method name → { params, result }. The broker forwards these verbatim. Params also accept WithIntent. */
 export interface ExtMethods {
