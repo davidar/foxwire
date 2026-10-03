@@ -152,6 +152,8 @@ then continues. A Deny is remembered for 10 minutes. All-sites access is never r
   rather than `fill_by_uid`, and interactive bot checks need a human click. Synthetic clicks cannot open pop-ups:
   foxwire opens a `target=_blank` link's address itself, but a `window.open` from a click handler stays blocked
   unless pop-ups are allowed for that site.
+- Typed text arrives as trusted `beforeinput`/`input` events, but key events are untrusted. A widget that only
+  reacts to trusted keystrokes (some bank address lookups) will take the text and not open its suggestions.
 - Screenshots need the all-sites grant, because `tabs.captureTab` requires `<all_urls>`.
 - No console or network capture, downloads, cookies, viewport resizing or PDF export.
 - File uploads are capped at 15 MB in total; `wait_for` waits at most 60 seconds.

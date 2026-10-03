@@ -236,6 +236,7 @@ async function tabInfo(t: browser.tabs.Tab, focusedWindow?: number): Promise<Tab
 // ---- frame aliases: subframe uids say f<k>_…, k per tab in first-seen order (DESIGN §6) ---------------
 
 const frameAliases = new Map<number, number[]>(); // tabId → frameIds; alias k is index k-1
+const framesNoted = new Map<number, Set<string>>(); // tabId → ungranted frame patterns already explained in a snapshot
 function aliasOf(tabId: number, frameId: number): number {
   const list = frameAliases.get(tabId) ?? [];
   frameAliases.set(tabId, list);
@@ -500,12 +501,22 @@ async function snapshot(p: P, timeoutMs: number): Promise<SnapshotResult> {
       lines.push(`- iframe [frame=f${k} url=${JSON.stringify(url)}]`, ...rewritten.map((l) => "  " + l));
     }
   }
+  const again = new Set<string>(); // ungranted frame origins this tab's earlier snapshots already explained
+  const noted = framesNoted.get(tabId) ?? new Set<string>();
+  framesNoted.set(tabId, noted);
   for (const f of frames) {
     if (!p.selector && f.frameId !== 0 && !replies.has(f.frameId) && /^https?:/.test(f.url)) {
       const { pattern, origin } = grantPattern(f.url);
-      const why = (await hasGrant(pattern)) ? "no answer" : `no host grant for ${origin}; the user can grant ${pattern} in the foxwire options page`;
+      const granted = await hasGrant(pattern);
+      if (!granted && noted.has(pattern)) { again.add(origin); continue; }
+      if (!granted) noted.add(pattern);
+      const why = granted ? "no answer" : `no host grant for ${origin}; the user can grant ${pattern} in the foxwire options page`;
       lines.push(`- iframe [url=${JSON.stringify(shortUrl(f.url))} not snapshotted: ${why}]`);
     }
+  }
+  if (again.size) lines.push(`- iframes still not snapshotted (no host grant, as noted before): ${[...again].join(", ")}`);
+  if (lines.length <= 3 && lines.some((l) => /button "Enable accessibility"/.test(l))) {
+    lines.push('note: this looks like a Flutter web app; click "Enable accessibility" to expose its controls, then take_snapshot again');
   }
   return { url: top.url, title: top.title, lines, frames: replies.size, truncated };
 }
@@ -672,10 +683,11 @@ browser.tabs.onRemoved.addListener((tabId) => {
   bubbles.delete(tabId);
   focusFrame.delete(tabId);
   frameAliases.delete(tabId);
+  framesNoted.delete(tabId);
   send({ event: "tab.removed", params: { tabId } });
 });
 browser.tabs.onCreated.addListener((tab) => void (created.push({ tab, at: Date.now() }), created.length > 20 && created.shift()));
-browser.webNavigation.onCommitted.addListener((d) => void (d.frameId === 0 && frameAliases.delete(d.tabId)));
+browser.webNavigation.onCommitted.addListener((d) => void (d.frameId === 0 && (frameAliases.delete(d.tabId), framesNoted.delete(d.tabId))));
 browser.permissions.onAdded.addListener(() => void Promise.all([sendStatus(), recheckAsks()]));
 browser.permissions.onRemoved.addListener(() => void sendStatus());
 
