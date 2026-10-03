@@ -1,0 +1,33 @@
+{
+  "name": "foxwire",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Drive your real Firefox from Claude Code: WebExtension + loopback broker + stdio MCP server, no WebDriver.",
+  "license": "MIT",
+  "author": "David A Roberts",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "web-ext lint --source-dir extension --ignore-files '**/*.ts'",
+    "test": "node --test 'test/*.test.ts'",
+    "broker": "node broker/dist/broker.js",
+    "run:scratch": "web-ext run --source-dir extension"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^143.0.1",
+    "@types/node": "^25.0.0",
+    "@types/ws": "^8.18.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0",
+    "web-ext": "^10.7.0"
+  }
+}

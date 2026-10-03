@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>foxwire</title>
+<style>
+  :root { color-scheme: light dark; font: 13px/1.4 system-ui, sans-serif; }
+  body { width: 360px; margin: 0; }
+  header { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+  #status { flex: 1; }
+  button { font: inherit; padding: .15rem .6rem; cursor: pointer; }
+  ul { list-style: none; margin: 0; padding: 0; max-height: 440px; overflow-y: auto; }
+  li { display: grid; grid-template-columns: auto 1fr; column-gap: .6rem; padding: .45rem .75rem; cursor: pointer; }
+  li + li { border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+  li:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+  time { opacity: .6; font-variant-numeric: tabular-nums; font-size: .85rem; padding-top: .1rem; }
+  .main { overflow-wrap: anywhere; }
+  .muted { opacity: .65; }
+  .tab { grid-column: 2; font-size: .85rem; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .err { display: inline-block; margin-left: .35rem; padding: 0 .35rem; border-radius: 4px; font-size: .75rem; background: #e03131; color: #fff; }
+  .ok { color: #2b8a3e; } .bad { color: #e03131; } .warn { color: #e8590c; }
+  #asks:empty { display: none; }
+  #asks { border-bottom: 2px solid #e8590c; background: color-mix(in srgb, #e8590c 10%, transparent); }
+  #asks h2 { margin: 0; padding: .5rem .75rem 0; font-size: .85rem; font-weight: 600; color: #e8590c; }
+  .ask { padding: .45rem .75rem .6rem; overflow-wrap: anywhere; }
+  .ask + .ask { border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+  .ask code { display: block; margin: .15rem 0; font-size: .85rem; }
+  .ask .btns { display: flex; gap: .5rem; margin-top: .35rem; }
+  .ask .allow { font-weight: 600; }
+  .empty { padding: 1.2rem .75rem; text-align: center; opacity: .65; cursor: default; }
+</style>
+</head>
+<body>
+<header><span id="status" class="muted">…</span><button id="options" type="button">Options</button></header>
+<section id="asks"></section>
+<ul id="list"></ul>
+<script src="dist/popup.js"></script>
+</body>
+</html>

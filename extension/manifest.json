@@ -1,0 +1,19 @@
+{
+  "manifest_version": 2,
+  "name": "foxwire",
+  "version": "0.1.0",
+  "description": "Lets a local Claude Code broker drive this Firefox on 127.0.0.1, only on sites you grant. No WebDriver.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "foxwire@vidr.cc",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
+  "permissions": ["tabs", "storage", "webNavigation", "http://127.0.0.1/*"],
+  "optional_permissions": ["<all_urls>"],
+  "background": { "scripts": ["dist/background.js"], "persistent": true },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "browser_action": { "default_icon": "icons/foxwire.svg", "default_title": "foxwire", "default_popup": "popup.html" },
+  "icons": { "48": "icons/foxwire.svg", "96": "icons/foxwire.svg" }
+}

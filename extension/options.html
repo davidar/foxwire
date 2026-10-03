@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>foxwire options</title>
+<style>
+  :root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
+  body { max-width: 44rem; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); padding-bottom: .25rem; }
+  label { display: block; margin: .5rem 0; }
+  input[type=password], input[type=text], input[type=number] { font: inherit; padding: .3rem .4rem; }
+  #secret { width: 28rem; max-width: 70%; font-family: ui-monospace, monospace; }
+  #port { width: 6rem; }
+  #pattern { width: 22rem; max-width: 60%; }
+  button { font: inherit; padding: .25rem .7rem; cursor: pointer; }
+  .muted { opacity: .7; font-size: .9rem; }
+  .ok { color: #2b8a3e; } .bad { color: #e03131; } .warn { color: #e8590c; }
+  ul { padding-left: 0; list-style: none; }
+  li { display: flex; gap: .75rem; align-items: center; padding: .2rem 0; }
+  li code { flex: 1; }
+  .error { color: #e03131; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<h1>foxwire</h1>
+<p class="muted">Lets the local foxwire broker (127.0.0.1) drive this Firefox, only on the sites you grant below.</p>
+
+<h2>Broker</h2>
+<label>Pairing secret (printed once by the broker)
+  <br><input id="secret" type="password" autocomplete="off" spellcheck="false">
+  <button id="toggle" type="button">Show</button>
+</label>
+<label>Port <input id="port" type="number" min="1" max="65535"></label>
+<button id="save" type="button">Save</button> <span id="saved" class="muted"></span>
+<p>Status: <span id="status" class="muted">…</span></p>
+
+<h2>Tools</h2>
+<label><input id="evaluate" type="checkbox"> Allow evaluate_script (runs code in pages) — off by default</label>
+<label><input id="bubble" type="checkbox"> Show Claude's thought bubble on pages (drawn with a user stylesheet; adds no elements to the page)</label>
+
+<h2>Site access</h2>
+<p class="muted">foxwire can only read or act on pages whose origin is granted here.</p>
+<ul id="grants"></ul>
+<label>Match pattern
+  <input id="pattern" type="text" placeholder="https://mail.google.com/*" spellcheck="false">
+  <button id="grant" type="button">Grant</button>
+</label>
+<button id="grantAll" type="button">Grant all sites</button>
+<p id="grantError" class="error"></p>
+
+<script src="dist/options.js"></script>
+</body>
+</html>
