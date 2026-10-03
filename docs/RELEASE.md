@@ -40,7 +40,8 @@ privately:
 
 Each release, in your own terminal:
 
-    # bump "version" in extension/manifest.json and package.json first
+    # first bump the version in extension/manifest.json, package.json (npm version X --no-git-tag-version),
+    # mcp/server.ts and README.md
     source ~/.config/foxwire/amo.env && scripts/sign.sh
 
 - The script builds, runs `web-ext sign --channel unlisted`, waits for automated review, and saves the signed

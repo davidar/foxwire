@@ -1,6 +1,6 @@
 {
   "name": "foxwire",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Drive your real Firefox from Claude Code: WebExtension + loopback broker + stdio MCP server, no WebDriver.",
   "license": "MIT",
@@ -29,5 +29,10 @@
     "esbuild": "^0.28.2",
     "typescript": "^5.9.0",
     "web-ext": "^10.7.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidar/foxwire.git"
+  },
+  "homepage": "https://github.com/davidar/foxwire"
 }

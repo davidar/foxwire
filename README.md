@@ -9,7 +9,7 @@ Cloudflare and similar services; see [docs/WHY-NOT-WEBDRIVER.md](docs/WHY-NOT-WE
 
 ## Status
 
-Version 0.1.0. Requires Firefox 140 or later. Tested on Linux only. Single author, in daily use by that author;
+Version 0.1.1. Requires Firefox 140 or later. Tested on Linux only. Single author, in daily use by that author;
 expect rough edges. Not listed on addons.mozilla.org: build it yourself and load it temporarily or sign your own copy.
 
 ## How it works
