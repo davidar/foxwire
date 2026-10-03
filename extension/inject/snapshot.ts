@@ -164,7 +164,11 @@ run<Args>((args) => {
   };
 
   const children = (el: Element): Node[] => {
-    if (el.tagName === "SLOT") return (el as HTMLSlotElement).assignedNodes({ flatten: true });
+    if (el.tagName === "SLOT") {
+      // A <slot> outside a real shadow tree (LWC synthetic shadow) has no assigned nodes: its content is its children.
+      const assigned = (el as HTMLSlotElement).assignedNodes({ flatten: true });
+      return assigned.length ? assigned : Array.from(el.childNodes);
+    }
     const sr = shadowRootOf(el);
     return Array.from((sr ?? el).childNodes);
   };
