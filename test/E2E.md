@@ -140,6 +140,13 @@ server registered as `foxwire` (so `mcp__foxwire__<tool>`). Tick each box; note 
 - [ ] A page with an ungranted Stripe iframe: its snapshot note shows `https://js.stripe.com/v3/…?…`, not the fragment.
 - [ ] `wait_for {"change": true, "timeoutMs": 4000}` on a quiet page → `TIMEOUT` "… within 4000 ms".
 
+## 14. New-tab links and labels
+
+- [ ] `click_by_uid` on `<a href="/t2.html" target="_blank">` → `after: opened tab <id> (…/t2.html) [link target=_blank]`,
+      exactly one new tab, next to the opener. With pop-ups allowed for the site → one tab, no `[link target=…]`.
+- [ ] A link whose click handler calls `preventDefault()` → no tab opened.
+- [ ] `fill_by_uid` on a `<label>`'s uid → the note names its `<input>`; on a readonly input → `BAD_PARAMS … is readonly`.
+
 ## Optional
 
 - [ ] `evaluate_script {"function": "() => document.title"}` → `DISABLED` while off; enable it in options, retry →

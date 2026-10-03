@@ -578,7 +578,13 @@ function action(op: string) {
     if (!(op === "click" || op === "press" || (op === "type" && p.submit))) return go();
     const r = (await go()) as ActionResult;
     const quiet = !!r?.note?.includes(QUIET); // only a quiet page is worth waiting a little longer for a new tab
-    const opened = await openedTab(tabId, since, quiet ? 600 : 0);
+    let opened = await openedTab(tabId, since, quiet ? 600 : 0);
+    if (!opened && r.opens && /^https?:/.test(r.opens.url)) {
+      // No tab appeared by itself (pop-up blocked): open the link's own destination, next to its opener.
+      const t = await browser.tabs.create({ url: r.opens.url, openerTabId: tabId, active: true });
+      opened = `opened tab ${t.id} (${await shownUrl(r.opens.url)}) [link target=${r.opens.target}]`;
+    }
+    delete r.opens;
     if (opened && r.note) r.note = quiet ? r.note.replace(QUIET, opened) : `${r.note}\nafter: ${opened}`;
     return r;
   };

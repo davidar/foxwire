@@ -218,6 +218,8 @@ export interface ActionResult {
   ok: true;
   note?: string;
   dialog?: { type: "alert" | "confirm" | "prompt"; message: string; returned: unknown };
+  /** Click on a new-tab link whose default was not cancelled: synthetic clicks cannot open pop-ups, the background opens it. */
+  opens?: { url: string; target: string };
 }
 
 // ---- Methods served by the broker itself -------------------------------------------------------

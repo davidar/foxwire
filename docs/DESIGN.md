@@ -145,6 +145,12 @@ it has unloaded, and the call succeeds with that note instead of failing with `T
 `type_text` submit that opens a tab (`tabs.onCreated` with `openerTabId` = the acted tab, or with no opener in the
 same window, from dispatch until ≤600 ms after a quiet result) adds `after: opened tab <tabId> (<url or loading>)`,
 replacing the "no visible change" wording. `wait_for` timeouts report the requested `timeoutMs`, not the inner budget.
+Synthetic clicks cannot open pop-ups (Firefox's blocker drops them), so when `click_by_uid` hits a link whose
+effective target (`target`, else `<base target>`) is a new browsing context, the page did not cancel the click, and
+no tab appeared, foxwire opens the link's http(s) `href` itself next to its opener, noted `[link target=…]`. A
+`window.open` from a click handler stays blocked unless the user allows pop-ups for the site. `fill_by_uid`,
+`type_text`, `select_option` and `upload_file_by_uid` given a `<label>` (or something in one) act on its control; a
+refused field says `is readonly` / `is disabled`.
 
 Every tool that targets a tab (all except `list_pages`, `select_page`, `close_page`, `status`, `sleep`) also takes an
 optional `intent`: a brief first-person note of what Claude is doing and why ("Opening the March invoice to check

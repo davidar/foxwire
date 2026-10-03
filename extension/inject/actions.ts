@@ -61,7 +61,10 @@ function fill(el: Element, value: string): string {
     if (el.checked !== want) click(el, false);
     return `${d} ${el.checked ? "checked" : "unchecked"}`;
   }
-  if (!isEditable(el)) throw new InjectError("BAD_PARAMS", `${d} is not an editable field; use click_by_uid or select_option`);
+  if (!isEditable(el)) {
+    const why = el.matches(":disabled") ? "is disabled" : (el as HTMLInputElement).readOnly ? "is readonly" : "is not an editable field; use click_by_uid or select_option";
+    throw new InjectError("BAD_PARAMS", `${d} ${why}`);
+  }
   clickToFocus(el);
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     const textLike = el instanceof HTMLTextAreaElement || ["text", "search", "url", "tel", "email", "password", ""].includes(el.type);
@@ -88,6 +91,18 @@ function fill(el: Element, value: string): string {
     inputEvent(el, "insertReplacementText", value);
   }
   return `filled ${d} (contenteditable)`;
+}
+
+/** A <label>, or something inside one, stands for its control (label.control: `for=` or the labelable descendant). */
+function controlOf(el: Element): Element {
+  return el.matches("input,textarea,select,[contenteditable]") ? el : (el.closest("label")?.control ?? el);
+}
+
+/** The link a click on el follows, if it opens a new browsing context (target, else <base target>). */
+function newTabLink(el: Element): HTMLAnchorElement | HTMLAreaElement | null {
+  const link = el.closest<HTMLAnchorElement | HTMLAreaElement>("a[href],area[href]");
+  const target = link?.getAttribute("target") ?? document.querySelector("base[target]")?.getAttribute("target") ?? "";
+  return link && !["", "_self", "_parent", "_top"].includes(target.toLowerCase()) ? link : null;
 }
 
 function typeText(target: Element | null, text: string): string {
@@ -304,12 +319,23 @@ run<Args>(async (a) => {
   switch (a.op) {
     case "click": {
       const el = elementFor(a.uid);
-      return effect(el, async () => {
+      // Firefox's pop-up blocker drops an untrusted click's new tab; keep the event to see if the page cancelled it.
+      const link = a.dblClick ? null : newTabLink(el);
+      let ev: Event | undefined;
+      const grab = (e: Event) => void (ev ??= e);
+      const r = await effect(el, async () => {
         const d = describe(el); // before the click: apps re-label buttons in their handlers
-        click(el, !!a.dblClick);
+        link?.addEventListener("click", grab);
+        try {
+          click(el, !!a.dblClick); // dispatch is synchronous: defaultPrevented is final once it returns
+        } finally {
+          link?.removeEventListener("click", grab);
+        }
         await sleep(50); // let synchronous handlers settle so an armed dialog is reported in this call
         return `${a.dblClick ? "double-" : ""}clicked ${d}`;
       });
+      if (link && ev && !ev.defaultPrevented && /^https?:$/.test(link.protocol)) r.opens = { url: link.href, target: link.getAttribute("target") ?? "<base target>" };
+      return r;
     }
     case "hover": {
       const el = elementFor(a.uid);
@@ -318,21 +344,21 @@ run<Args>(async (a) => {
       return done(`hovered ${d}`);
     }
     case "fill": {
-      const el = elementFor(a.uid);
+      const el = controlOf(elementFor(a.uid));
       return effect(el, () => fill(el, a.value));
     }
     case "type": {
-      const el = a.uid ? elementFor(a.uid) : null;
+      const el = a.uid ? controlOf(elementFor(a.uid)) : null;
       return effect(el, () => typeText(el, a.text) + (a.submit ? (press("Enter", []), " and pressed Enter") : ""));
     }
     case "press":
       return effect(null, () => press(a.key, a.modifiers ?? []));
     case "selectOption": {
-      const el = elementFor(a.uid);
+      const el = controlOf(elementFor(a.uid));
       return effect(el, () => selectOption(el, a.values));
     }
     case "upload": {
-      const el = elementFor(a.uid);
+      const el = controlOf(elementFor(a.uid));
       return effect(el, () => upload(el, a.files));
     }
     case "waitFor":
