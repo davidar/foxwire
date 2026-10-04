@@ -138,8 +138,9 @@ within a moment. Every call has a timeout and fails with a named error code.
 
 Tools that act on a tab accept an optional `intent`: a short note of what the model is doing and why. foxwire shows
 it as a small thought bubble on the page, drawn with a user stylesheet on the root element's pseudo-elements, so no
-DOM nodes or page scripts are added. It can be switched off in the options page. The toolbar popup lists recent
-calls with their intents and results.
+DOM nodes or page scripts are added. It can be switched off in the options page. Whichever tab you are looking at,
+the toolbar button shows `…` while Claude is working in any tab (and for a few seconds after); its tooltip names the
+intent and the tab. The toolbar popup lists recent calls with their intents and results; click one to go to its tab.
 
 When a tool needs a site you have not granted, the toolbar button shows an orange `?` and the popup asks you to Allow
 or Deny that one origin. Allow opens Firefox's own permission prompt for exactly that origin, and the waiting call

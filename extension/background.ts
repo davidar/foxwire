@@ -123,9 +123,10 @@ async function handle(req: RequestFrame): Promise<void> {
   const params = (req.params ?? {}) as P;
   const intent = typeof params.intent === "string" ? capIntent(params.intent.trim()) : "";
   const reqTab: number | undefined = Number.isInteger(params.tabId) ? params.tabId : undefined;
-  if (intent && reqTab !== undefined && Object.hasOwn(METHODS, req.method) && req.method !== "requestGrant") {
-    void browser.browserAction.setBadgeText({ tabId: reqTab, text: "…" }).catch(() => {});
-    if (!AFTER_LOAD.has(req.method)) await Promise.race([showBubble(reqTab, intent, params.uid).catch(() => {}), sleep(400)]);
+  const working = Object.hasOwn(METHODS, req.method) && req.method !== "requestGrant" && (reqTab !== undefined || req.method === "createTab");
+  if (working) busyStart(req.method, intent, reqTab, params.url);
+  if (intent && reqTab !== undefined && working && !AFTER_LOAD.has(req.method)) {
+    await Promise.race([showBubble(reqTab, intent, params.uid).catch(() => {}), sleep(400)]);
   }
   const timeoutMs = clamp(Number(params.timeoutMs) || (req.method === "requestGrant" ? MAX_TIMEOUT_MS : DEFAULT_TIMEOUT_MS), 1000, MAX_TIMEOUT_MS);
   const fn = (METHODS as Record<string, ((p: P, t: number) => Promise<unknown>) | undefined>)[req.method];
@@ -146,6 +147,7 @@ async function handle(req: RequestFrame): Promise<void> {
     }
   }
   send(frame);
+  if (working && !--busy) idle = setTimeout(() => ((idle = undefined), badge()), BUBBLE_MS);
   const tabId = req.method === "createTab" ? (frame.result as TabInfo | null)?.tabId : reqTab;
   if (tabId !== undefined && Object.hasOwn(METHODS, req.method)) afterCall(tabId, req.method, intent, frame.error?.code ?? "ok");
 }
@@ -191,8 +193,6 @@ function afterCall(tabId: number, method: string, intent: string, outcome: strin
   activity.length = Math.min(activity.length, 50);
   void browser.tabs.get(tabId).then((t) => (entry.title = (t.title || t.url || "").slice(0, 100)), () => (entry.title = "(closed)"));
   if (!intent || method === "requestGrant") return;
-  void browser.browserAction.setBadgeText({ tabId, text: null }).catch(() => {}); // null: inherit the global "?" of a grant request
-  if (!asks.size) void browser.browserAction.setTitle({ title: `foxwire: ${intent}` }).catch(() => {});
   const linger = () => {
     const b = bubbles.get(tabId);
     if (!b) return;
@@ -336,11 +336,26 @@ const declined = new Map<string, number>(); // pattern → when the user said no
 const DECLINE_MEMORY_MS = 10 * 60_000;
 const LATE_ANSWER_MS = 2 * 60_000; // an unanswered request stays in the popup this long after the call gives up
 
-function askBadge(): void {
+// Global toolbar badge (DESIGN §7.1), visible from any tab: "?" while a grant request is pending, else "…" while a
+// tab call runs and BUBBLE_MS after the last one ended.
+let busy = 0;
+let busyLabel = "";
+let idle: ReturnType<typeof setTimeout> | undefined;
+function badge(): void {
   const first = asks.values().next().value;
-  void browser.browserAction.setBadgeText({ text: first ? "?" : "" }).catch(() => {});
+  const on = busy > 0 || idle !== undefined;
+  void browser.browserAction.setBadgeText({ text: first ? "?" : on ? "…" : "" }).catch(() => {});
   void browser.browserAction.setBadgeBackgroundColor({ color: first ? "#e8590c" : null }).catch(() => {});
-  void browser.browserAction.setTitle({ title: first ? `Claude wants access to ${first.origin}` : null }).catch(() => {});
+  void browser.browserAction.setTitle({ title: first ? `Claude wants access to ${first.origin}` : on ? busyLabel : null }).catch(() => {});
+}
+function busyStart(method: string, intent: string, tabId: number | undefined, url: unknown): void {
+  busy++;
+  clearTimeout(idle);
+  idle = undefined;
+  const label = (where: string) => `foxwire: ${intent || method} — ${where.length > 60 ? where.slice(0, 59) + "…" : where}`;
+  const mine = (busyLabel = label(tabId === undefined ? String(url ?? "new tab") : `tab ${tabId}`));
+  badge();
+  if (tabId !== undefined) void browser.tabs.get(tabId).then((t) => void (busyLabel === mine && t.title && ((busyLabel = label(t.title)), badge())), () => {});
 }
 
 function settleAsk(a: Ask, ok: boolean): void {
@@ -349,7 +364,7 @@ function settleAsk(a: Ask, ok: boolean): void {
   clearTimeout(a.drop);
   if (!ok) declined.set(a.pattern, Date.now());
   for (const w of a.waiters) w(ok);
-  askBadge();
+  badge();
 }
 
 async function recheckAsks(): Promise<void> {
@@ -368,7 +383,7 @@ async function requestGrant(p: P, timeoutMs: number): Promise<{ granted: true; p
     const intent = typeof p.intent === "string" ? capIntent(p.intent.trim()) : "";
     a = { id: randomHex(8), pattern, origin, intent, title: (tab?.title ?? "").slice(0, 100), createdAt: Date.now(), waiters: new Set() };
     asks.set(pattern, a);
-    askBadge();
+    badge();
     void browser.browserAction.openPopup().catch(() => {}); // usually refused without a user gesture; the badge is the fallback
   }
   clearTimeout(a.drop);
@@ -382,7 +397,7 @@ async function requestGrant(p: P, timeoutMs: number): Promise<{ granted: true; p
   });
   if (ok) return { granted: true, pattern };
   if (ok === false) throw fwError("NO_GRANT", `the user was asked and declined ${pattern}`, { origin, pattern });
-  if (!ask.waiters.size) ask.drop = setTimeout(() => (asks.get(pattern) === ask && asks.delete(pattern), askBadge()), LATE_ANSWER_MS);
+  if (!ask.waiters.size) ask.drop = setTimeout(() => (asks.get(pattern) === ask && asks.delete(pattern), badge()), LATE_ANSWER_MS);
   throw fwError("NO_GRANT", `the user was asked for ${pattern} but did not answer in ${Math.round(waitMs / 1000)} s; the request is still shown in the foxwire toolbar popup`, { origin, pattern });
 }
 

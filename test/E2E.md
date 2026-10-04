@@ -87,6 +87,10 @@ server registered as `foxwire` (so `mcp__foxwire__<tool>`). Tick each box; note 
 - [ ] `screenshot_page {"intent": "Checking layout"}` right after a bubbled click → the bubble is not in the image.
 - [ ] The foxwire toolbar button's popup lists the calls newest first (intent, tab title, red code on failures);
       clicking an entry focuses that tab. The `status` tool prints `bubbleEnabled: true`.
+- [ ] With another tab in front, `wait_for {"text": "nothing-here", "timeoutMs": 10000, "intent": "Waiting"}` on the
+      selected tab → the toolbar button shows `…` on the tab you are looking at, tooltip `foxwire: Waiting — <that
+      tab's title>`; ~4 s after the call returns the badge clears and the tooltip is back to "foxwire". The same
+      without an intent → tooltip `foxwire: waitFor — …`. A pending grant request shows the orange `?` instead.
 - [ ] Untick "Show Claude's thought bubble" in options → repeat the click with an intent → no bubble; the popup still
       lists the call; `status` prints `bubbleEnabled: false`. Tick it again.
 
