@@ -10,7 +10,7 @@
       "data_collection_permissions": { "required": ["none"] }
     }
   },
-  "permissions": ["tabs", "storage", "webNavigation", "http://127.0.0.1/*"],
+  "permissions": ["tabs", "storage", "webNavigation", "activeTab", "http://127.0.0.1/*"],
   "optional_permissions": ["<all_urls>"],
   "background": { "scripts": ["dist/background.js"], "persistent": true },
   "options_ui": { "page": "options.html", "open_in_tab": true },

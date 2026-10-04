@@ -553,14 +553,23 @@ async function screenshot(p: P, timeoutMs: number): Promise<ScreenshotResult> {
   if (p.fullPage) Object.assign(rect, { width: Math.min(rect.width, 5000), height: Math.min(rect.height, 10000) });
   if (rect.width <= 0 || rect.height <= 0) throw fwError("INJECT_FAILED", `nothing to capture: element has size ${rect.width}x${rect.height}`);
   await hideBubble(tabId); // never in the capture; re-shown after the call
-  // Firefox only exposes captureTab while the extension holds <all_urls>; a per-origin grant is not enough.
-  if (typeof browser.tabs.captureTab !== "function")
-    throw fwError("NO_GRANT", 'screenshots need the "Grant all sites" grant (<all_urls>) in the foxwire options page; per-origin grants cannot capture', { pattern: "<all_urls>" });
-  const dataUrl = await browser.tabs.captureTab(tabId, { format: "png", rect, scale: 1 } as browser.extensionTypes.ImageDetails).catch((e) => {
-    const msg = (e as Error)?.message ?? String(e);
-    if (!/permission/i.test(msg)) throw mapInjectError(e, tabId);
-    throw fwError("NO_GRANT", `screenshot refused: ${msg}; captureTab may need the "all sites" grant in the foxwire options page`);
+  const opts = { format: "png", rect, scale: 1 } as browser.extensionTypes.ImageDetails;
+  // Firefox only exposes captureTab while the extension holds <all_urls>. Without it, captureVisibleTab works on a
+  // window's front tab once the user has clicked the toolbar button there (activeTab). pattern <all_urls>: never ask.
+  const noGrant = (why: string) => fwError("NO_GRANT", `${why}; ask the user to bring the tab to the front and click the foxwire toolbar button (allows screenshots of that tab until it leaves the site), or to grant all sites in the foxwire options page`, { pattern: "<all_urls>" });
+  if (typeof browser.tabs.captureTab === "function") {
+    const dataUrl = await browser.tabs.captureTab(tabId, opts).catch((e) => {
+      throw /permission/i.test((e as Error)?.message ?? "") ? noGrant(`screenshot refused: ${(e as Error).message}`) : mapInjectError(e, tabId);
+    });
+    return { dataUrl, ...pngSize(dataUrl) };
+  }
+  const tab = await getTab(tabId);
+  if (!tab.active) throw noGrant("without the all-sites grant only the tab showing in its window can be captured, and this tab is in the background");
+  const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId!, opts).catch((e) => {
+    throw /activeTab/i.test((e as Error)?.message ?? "") ? noGrant("the user has not clicked the foxwire toolbar button on this tab since it loaded this site") : mapInjectError(e, tabId);
   });
+  const now = await getTab(tabId);
+  if (!now.active || now.windowId !== tab.windowId) throw fwError("INJECT_FAILED", "the tab was switched during the capture, so the image was discarded; retry");
   return { dataUrl, ...pngSize(dataUrl) };
 }
 

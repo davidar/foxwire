@@ -78,7 +78,8 @@ Requires Node 22 or later and Firefox 140 or later.
      else. See [docs/RELEASE.md](docs/RELEASE.md).
 
 4. Open the extension's options page (`about:addons` → foxwire → Preferences), paste the secret, Save, and grant the
-   sites you want driven. "Grant all sites" is available but not required, except for screenshots.
+   sites you want driven. "Grant all sites" is available but not required; without it, screenshots need the tab in
+   front and a click on the foxwire toolbar button there.
 
 5. Register the MCP server. For Claude Code, at user scope:
 
@@ -155,7 +156,9 @@ then continues. A Deny is remembered for 10 minutes. All-sites access is never r
   unless pop-ups are allowed for that site.
 - Typed text arrives as trusted `beforeinput`/`input` events, but key events are untrusted. A widget that only
   reacts to trusted keystrokes (some bank address lookups) will take the text and not open its suggestions.
-- Screenshots need the all-sites grant, because `tabs.captureTab` requires `<all_urls>`.
+- Without the all-sites grant (`tabs.captureTab` needs `<all_urls>`), screenshots fall back to `captureVisibleTab`:
+  the tab must be the one showing in its window, and you must have clicked the foxwire toolbar button on it since
+  it loaded that site (Firefox's `activeTab`).
 - No console or network capture, downloads, cookies, viewport resizing or PDF export.
 - File uploads are capped at 15 MB in total; `wait_for` waits at most 60 seconds.
 - While the thought bubble is visible, a page could detect it by reading the computed style of the root element's

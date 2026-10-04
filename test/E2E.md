@@ -107,7 +107,14 @@ server registered as `foxwire` (so `mcp__foxwire__<tool>`). Tick each box; note 
       `NO_GRANT` at once ("declined … in the last 10 minutes"), no new popup entry.
 - [ ] On a third site, ignore the request → `NO_GRANT` after ~60 s saying it is still shown in the popup; Allow it
       within 2 minutes → the next call works without asking.
-- [ ] Without "Grant all sites", `screenshot_page` on a granted site → `NO_GRANT` about all sites; no `?` badge.
+- [ ] Without "Grant all sites", `screenshot_page` on a granted site that is in front but whose toolbar button you have
+      not clicked → `NO_GRANT` asking you to click the foxwire toolbar button (or grant all sites); no `?` badge. The
+      same on a granted site in a background tab → `NO_GRANT` "only the tab showing in its window".
+- [ ] Without "Grant all sites", bring the granted tab to the front and click the foxwire toolbar button, close the
+      popup, then `screenshot_page` and `screenshot_by_uid` → PNGs of that tab. Navigate it to another site you
+      granted → `NO_GRANT` again until you click the button there. Switch tabs during a `fullPage` capture → the
+      call fails with "tab was switched during the capture", never an image of the other tab. An ungranted site
+      after a click still fails `NO_GRANT` for the site (and asks via `?`).
 
 ## 11. Uid generations and change waits
 

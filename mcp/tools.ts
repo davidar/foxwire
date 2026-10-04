@@ -42,7 +42,7 @@ const MIME: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 const HINTS: Record<string, () => string> = {
-  NO_GRANT: () => "The user is asked automatically (foxwire toolbar popup) for a page's own site, so do not retry in a loop; tell them what you need. Other-site subframes and screenshots need grants in the foxwire options page",
+  NO_GRANT: () => "The user is asked automatically (foxwire toolbar popup) for a page's own site, so do not retry in a loop; tell them what you need. Other-site subframes need grants in the foxwire options page; for screenshots follow the message",
   NOT_PAIRED: () => "Firefox running? foxwire extension installed with the secret pasted in its options? If the extension reloaded, uids from earlier snapshots are invalid: take_snapshot again",
   STALE_UID: () => "take_snapshot again and use a fresh uid",
   NO_BROKER: () => `see ${logPath()}`,
@@ -271,8 +271,8 @@ export function createTools(client: BrokerClient) {
     return act("upload", { uid: a.uid, files });
   });
 
-  tool("screenshot_page", "PNG of the selected tab's viewport (or full page); returned inline unless saveTo is given.", { fullPage: bool("capture the whole scrollable page"), saveTo: saveS }, [], (a) => shot({ fullPage: a.fullPage }, a.saveTo));
-  tool("screenshot_by_uid", "PNG of one element; returned inline unless saveTo is given.", { uid: uidS, saveTo: saveS }, ["uid"], (a) => shot({ uid: a.uid }, a.saveTo));
+  tool("screenshot_page", "PNG of the selected tab's viewport (or full page); returned inline unless saveTo is given. Without the all-sites grant, the tab must be in front and the user must have clicked the foxwire toolbar button on it.", { fullPage: bool("capture the whole scrollable page"), saveTo: saveS }, [], (a) => shot({ fullPage: a.fullPage }, a.saveTo));
+  tool("screenshot_by_uid", "PNG of one element; returned inline unless saveTo is given. Same grant needs as screenshot_page.", { uid: uidS, saveTo: saveS }, ["uid"], (a) => shot({ uid: a.uid }, a.saveTo));
 
   tool("evaluate_script", "Run a JS function in the page and return its JSON result; OFF unless enabled in the extension options; pageWorld runs it as page JS (visible to the site).", {
     function: str("function source, e.g. \"(a, b) => document.title + a\""), args: { type: "array", description: "JSON arguments passed to the function" }, pageWorld: bool("run in the page world instead of the isolated sandbox"),

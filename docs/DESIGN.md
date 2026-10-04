@@ -60,7 +60,9 @@ The Firefox Flatpak has `shared=network`, so loopback is shared with the host: *
   found in prior art: Blueprint's "first client wins, any web page can connect" and FoxPilot's default
   "any extension origin" pairing (`PRIOR-ART.md` §3, §1).
 - **Site access is per-origin and opt-in.** Manifest `permissions`: `tabs`, `storage`, `webNavigation`,
-  `http://127.0.0.1/*` (nothing else). `optional_permissions`: `<all_urls>`. Grants are made by the user in the
+  `activeTab`, `http://127.0.0.1/*` (nothing else). `activeTab` is used for one thing: `captureVisibleTab` of a
+  window's front tab after the user clicked the toolbar button on it, so screenshots work without all-sites (§11 #4);
+  foxwire's own tools still require the per-origin grant (`permissions.contains`) before touching that page. `optional_permissions`: `<all_urls>`. Grants are made by the user in the
   options page per origin pattern (`permissions.request` needs a user gesture) — or, if they prefer, a one-time
   `<all_urls>` grant that Firefox then exposes per-site in the extension's panel. The `tabs` permission alone gives
   titles/URLs of all tabs (needed for `list_pages`); everything that touches page content needs a host grant and
@@ -74,7 +76,7 @@ The Firefox Flatpak has `shared=network`, so loopback is shared with the host: *
   `permissions.request` for exactly that one pattern in the click handler, so the grant is still the user's click on
   Firefox's own per-origin prompt; the background learns the outcome from `permissions.onAdded`, not from the popup
   (which Firefox may close). Nothing widens beyond that pattern; all-sites stays an options-page action and is
-  never asked for (screenshots' `<all_urls>` `NO_GRANT` does not trigger a request). Deny is remembered in memory
+  never asked for (a screenshot's `NO_GRANT`, which carries pattern `<all_urls>`, does not trigger a request). Deny is remembered in memory
   for 10 minutes: further requests for that pattern fail at once. The call waits up to ~59 s; an unanswered
   request stays in the popup for 2 more minutes so a late Allow still serves the next call. Concurrent requests for
   one pattern share one popup entry.
@@ -126,8 +128,8 @@ still apply. Each tool: one sentence of doc, strict input schema, small output.
 | `press_key` | `key`, `modifiers?` | — | `Enter`, `Tab`, `Escape`, `ArrowDown`… |
 | `select_option` | `uid`, `values[]` | — | `<select>` |
 | `upload_file_by_uid` | `uid`, `paths[]` | — | **host-side read**: mcp reads the file, ships bytes to the extension, builds a `File` and sets `input.files` via `DataTransfer`. Size cap 15 MB. |
-| `screenshot_page` | `fullPage?` | PNG (base64 or saved path) | `tabs.captureTab`; fullPage by scroll-stitch or `rect` option |
-| `screenshot_by_uid` | `uid` | PNG | `captureTab` with `rect` |
+| `screenshot_page` | `fullPage?` | PNG (base64 or saved path) | site grant required; `tabs.captureTab` with `rect` if all sites granted, else `captureVisibleTab` (front tab after a toolbar click, §11 #4) |
+| `screenshot_by_uid` | `uid` | PNG | as `screenshot_page`, `rect` of the element |
 | `evaluate_script` | `function`, `args?` | JSON | page world; off unless enabled in options |
 | `wait_for` | `text? \| selector? \| uid?`, `change?`, `timeoutMs?` | `added` text with `change` | polls inside one injection; with a selector the output names the match count and frame (`3 matches, frame f1 https://…`); in change mode the top frame's `document.title` changing also resolves, and the title is printed; `change: true` records the target's visible text (selector, uid, else body) and resolves when it differs, returning the appended suffix or else the new lines (≤2,000 chars); a selector absent at start counts as changed when it appears; `TIMEOUT` = nothing changed, call again; `text`+`change` → `BAD_PARAMS` |
 | `sleep` | `ms` (1–60,000) | `slept N ms` | mcp only, no extension call, no `intent`; prefer `wait_for` |
@@ -227,7 +229,7 @@ Maybe-later (not v1): `console_messages`, `network_requests` (needs `webRequest`
   and every bubble error is swallowed: it can never fail a call.
 - Lifetime: one per tab; a new intent replaces the old (`removeCSS` with the identical details, then `insertCSS`).
   It stays ~4 s after the call ends. Navigations (`new_page`, `navigate_page`, `navigate_history`) show it after the
-  load wait, on the new document. `screenshot_*` removes it before `captureTab` and re-shows it after.
+  load wait, on the new document. `screenshot_*` removes it before the capture and re-shows it after.
 - Switch: `bubbleEnabled` in `storage.local` (default on; options page → Tools). Off means no `insertCSS` at all.
 - Toolbar button: the background keeps the last 50 tab-targeting calls in memory (time, tab, title, method, intent,
   `ok` or error code); `popup.html` lists them newest first (click → focus that tab) with the pairing status. While
@@ -302,7 +304,11 @@ Turning the option off removes even that.
    "Grant all sites" (`<all_urls>`) in the options page that is never requested automatically.
 3. `evaluate_script`: off by default, enabled by an options toggle; `pageWorld` is a separate per-call opt-in.
 4. Screenshots: `tabs.captureTab` with a `rect`, full page capped at 5,000 × 10,000 px; no scroll-stitch. Firefox
-   only exposes `captureTab` while the extension holds `<all_urls>`, so screenshots need the all-sites grant.
+   only exposes `captureTab` while the extension holds `<all_urls>`. Without it, `tabs.captureVisibleTab` (same
+   options) works on a window's front tab if the extension has `activeTab` there, which the user gives by clicking
+   the toolbar button on that tab and which lasts until it leaves the site. A background tab, or no click, →
+   `NO_GRANT` saying so (pattern `<all_urls>`, so no just-in-time ask); if the front tab changed during the capture
+   the image is discarded (`INJECT_FAILED`, retry). The site grant is checked first either way.
 5. Gecko id: `foxwire@vidr.cc`, fixed by the first signing.
 6. Licence: MIT.
 
