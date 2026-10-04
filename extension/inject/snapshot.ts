@@ -35,6 +35,15 @@ const INPUT_ROLE: Record<string, string> = {
   date: "textbox", "datetime-local": "textbox", month: "textbox", week: "textbox", time: "textbox",
 };
 
+// Controls that make a subtree worth showing even when the page marks it aria-hidden (see walk).
+const CONTROLS = 'a[href],button,input:not([type=hidden]),select,textarea,[contenteditable],[tabindex]:not([tabindex^="-"]),' +
+  ["button", "link", "textbox", "combobox", "checkbox", "radio", "tab", "menuitem"].map((r) => `[role=${r}]`).join(",");
+const rendered = (el: Element): boolean => el.checkVisibility({ visibilityProperty: true, opacityProperty: true }) && el.getClientRects().length > 0;
+/** Rendered beats declared: a displayed subtree with controls is what the user sees, whatever aria-hidden says. */
+function shownControls(el: Element): boolean {
+  return (el.matches(CONTROLS) && rendered(el)) || Array.from(el.querySelectorAll(CONTROLS)).some(rendered);
+}
+
 function roleOf(el: Element): string {
   const explicit = el.getAttribute("role")?.trim().split(/\s+/)[0];
   if (explicit) return explicit;
@@ -127,6 +136,7 @@ function stateAttrs(el: Element, role: string): string[] {
     const v = el.getAttribute(attr);
     if (v !== null && v !== "false") a.push(`${attr.slice(5)}${v === "true" ? "" : `=${v}`}`);
   }
+  if (el.getAttribute("aria-hidden") === "true") a.push("aria-hidden"); // emitted anyway: includeAll, or shownControls
   // :disabled also covers controls inside a disabled <fieldset>; readonly fields refuse fill/type.
   if (el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") a.push("disabled");
   if ((el as HTMLInputElement).readOnly === true || el.getAttribute("aria-readonly") === "true") a.push("readonly");
@@ -142,9 +152,14 @@ run<Args>((args) => {
   const maxNodes = Math.max(1, Math.min(args.maxNodes ?? 4000, 20000));
   const includeAll = !!args.includeAll;
   let root: Node = document.documentElement;
+  let picked = "";
   // The selector scopes the top frame only; child frames are walked whole and merged under their iframe line.
   if (args.selector && window.top === window) {
-    const found = document.querySelector(args.selector);
+    const all = Array.from(document.querySelectorAll(args.selector));
+    // Prefer the first match the user can see (a hidden template often precedes the live element).
+    const at = includeAll ? 0 : Math.max(0, all.findIndex(rendered));
+    const found = all[at];
+    if (all.length > 1) picked = `note: selector matched ${all.length}, showing #${at + 1}${at ? " (first rendered)" : ""}`;
     const role = LANDMARK_ROLES.has(args.selector) || INTERACTIVE_ROLES.has(args.selector) ? `; for the role try [role=${args.selector}]` : "";
     if (!found) throw new InjectError("BAD_PARAMS", `CSS selector ${JSON.stringify(args.selector)} matched nothing${role}`);
     root = found;
@@ -186,7 +201,7 @@ run<Args>((args) => {
     if (el instanceof HTMLInputElement && el.type === "file") return void emit(depth, line(el, "file", nameOf(el, "file"), ""));
     const cs = el.ownerDocument.defaultView?.getComputedStyle(el);
     const cursor = cs?.cursor ?? "";
-    if (!includeAll && (el.getAttribute("aria-hidden") === "true" || (el instanceof HTMLInputElement && el.type === "hidden") || cs?.display === "none")) {
+    if (!includeAll && ((el.getAttribute("aria-hidden") === "true" && !shownControls(el)) || (el instanceof HTMLInputElement && el.type === "hidden") || cs?.display === "none")) {
       for (const f of el.querySelectorAll("input[type=file]")) walk(f, depth);
       return;
     }
@@ -241,5 +256,6 @@ run<Args>((args) => {
   };
 
   walk(root, 0);
+  if (picked) lines.push(picked);
   return { url: location.href, title: document.title, lines, frames: 1, truncated };
 });
