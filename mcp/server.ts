@@ -7,7 +7,7 @@ import { socketPath } from "../broker/paths.ts";
 import { BrokerClient, log } from "./client.ts";
 import { createTools } from "./tools.ts";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 
 const client = new BrokerClient();
 const tools = createTools(client);
