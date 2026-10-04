@@ -188,6 +188,12 @@ Maybe-later (not v1): `console_messages`, `network_requests` (needs `webRequest`
 - Form controls show `disabled` (`:disabled`, so fieldset-inherited too, or `aria-disabled=true`) and `readonly`
   (`readOnly` or `aria-readonly=true`): fill/type will refuse those. Ungranted child frames are listed by origin +
   pathname only (`shortUrl`), never their query or fragment.
+- Rendered beats declared: foxwire drives what the user sees, and the accessibility tree is the means, not the
+  source of truth. `display:none` and `aria-hidden=true` subtrees are pruned (unless `includeAll`), except that an
+  `aria-hidden` subtree holding a rendered control is kept and its root marked `[aria-hidden]` (seen on a Salesforce
+  portal whose visible dialog hid itself from AT). `visibility:hidden` skips the element but not its descendants.
+  A `<slot>` with nothing assigned is walked through its children (LWC synthetic shadow). A `selector` with several
+  matches shows the first rendered one and says so (`note: selector matched 2, showing #2 (first rendered)`).
 - A row/listitem name is truncated at about 160 chars; read its child `text` lines for the full content. Snapshot
   line count is not a change signal (use `wait_for` with `change`).
 - `maxLines` default 100, `selector` scopes the walk, `saveTo` writes the full tree to a file (mcp side).

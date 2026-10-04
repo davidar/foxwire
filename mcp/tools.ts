@@ -221,7 +221,7 @@ export function createTools(client: BrokerClient) {
   });
 
   tool("take_snapshot", "Text tree of the selected page (role, name, value, state) with uid=… on interactable elements (e.g. 12kqx; f2_12kqx inside iframe f2); uids survive re-snapshots until navigation or extension reload.", {
-    selector: str("CSS selector to scope the walk (first match only)"), maxLines: int("lines to return inline (default 100)", 1), includeAll: bool("include hidden and non-interactive, unnamed nodes"), saveTo: saveS,
+    selector: str("CSS selector to scope the walk (first rendered match)"), maxLines: int("lines to return inline (default 100)", 1), includeAll: bool("include hidden and non-interactive, unnamed nodes"), saveTo: saveS,
   }, [], async (a) => {
     const maxLines: number = a.maxLines ?? 100;
     const r = await call("snapshot", { tabId: await resolveTab(), selector: a.selector, includeAll: a.includeAll, maxNodes: a.saveTo ? 20_000 : Math.max(4000, maxLines * 4) });
