@@ -186,9 +186,13 @@ run<Args>((args) => {
     if (el instanceof HTMLInputElement && el.type === "file") return void emit(depth, line(el, "file", nameOf(el, "file"), ""));
     const cs = el.ownerDocument.defaultView?.getComputedStyle(el);
     const cursor = cs?.cursor ?? "";
-    // display:none hides the subtree; visibility:hidden can be undone by children, rare — accept
-    if (!includeAll && (el.getAttribute("aria-hidden") === "true" || (el instanceof HTMLInputElement && el.type === "hidden") || (cs && (cs.display === "none" || cs.visibility === "hidden")))) {
+    if (!includeAll && (el.getAttribute("aria-hidden") === "true" || (el instanceof HTMLInputElement && el.type === "hidden") || cs?.display === "none")) {
       for (const f of el.querySelectorAll("input[type=file]")) walk(f, depth);
+      return;
+    }
+    // visibility:hidden hides this element only: a descendant can set visibility:visible (modals do), so keep walking.
+    if (!includeAll && cs?.visibility === "hidden") {
+      for (const c of children(el)) walk(c, depth);
       return;
     }
     if (tag === "svg" || tag === "SVG") {
