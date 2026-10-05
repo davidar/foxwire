@@ -72,7 +72,8 @@ The Firefox Flatpak has `shared=network`, so loopback is shared with the host: *
   needs a user gesture in an extension page), so it lists the request in the toolbar popup, sets the badge to an
   orange `?` with the tooltip "Claude wants access to <origin>", and tries `browserAction.openPopup()` (usually
   refused without a gesture; the badge is the fallback). The popup shows the origin, the exact pattern
-  (`https://host/*`, or `file:///*`), the intent and the tab title, with **Allow** and **Deny**. Allow calls
+  (`https://host/*`, or `file:///*`), the intent and the tab title, with **Allow** and **Deny**; clicking the entry
+  itself focuses the asking tab (when the request named one). Allow calls
   `permissions.request` for exactly that one pattern in the click handler, so the grant is still the user's click on
   Firefox's own per-origin prompt; the background learns the outcome from `permissions.onAdded`, not from the popup
   (which Firefox may close). Nothing widens beyond that pattern; all-sites stays an options-page action and is

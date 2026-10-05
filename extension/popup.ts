@@ -7,7 +7,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text: st
 const statusEl = document.getElementById("status")!;
 const list = document.getElementById("list")!;
 const asksEl = document.getElementById("asks")!;
-type Ask = { id: string; pattern: string; origin: string; intent: string; title: string };
+type Ask = { id: string; pattern: string; origin: string; intent: string; title: string; tabId?: number };
 
 document.getElementById("options")!.addEventListener("click", () => void browser.runtime.openOptionsPage().then(() => window.close()));
 
@@ -51,6 +51,13 @@ function askRow(a: Ask): HTMLDivElement {
   const btns = el("div", "btns", "");
   btns.append(allow, deny);
   div.append(btns);
+  const { tabId } = a;
+  if (tabId !== undefined) {
+    // Show the tab that is asking; the popup stays open if Firefox lets it, so Allow is still one click away.
+    div.classList.add("goto");
+    div.title = "Show this tab";
+    div.addEventListener("click", (e) => void (btns.contains(e.target as Node) || focusTab(tabId).catch(() => {})));
+  }
   return div;
 }
 
@@ -61,16 +68,13 @@ function row(a: ActivityEntry): HTMLLIElement {
   if (a.outcome !== "ok") main.append(el("span", "err", a.outcome));
   li.append(el("time", "", new Date(a.time).toTimeString().slice(0, 8)), main, el("div", "tab", a.title || `tab ${a.tabId}`));
   li.title = `${a.method} · tab ${a.tabId}`;
-  li.addEventListener("click", async () => {
-    try {
-      const t = await browser.tabs.update(a.tabId, { active: true });
-      if (t?.windowId !== undefined) await browser.windows.update(t.windowId, { focused: true });
-      window.close();
-    } catch {
-      li.classList.add("muted"); // tab is gone
-    }
-  });
+  li.addEventListener("click", () => void focusTab(a.tabId).then(() => window.close(), () => li.classList.add("muted"))); // rejects: tab is gone
   return li;
+}
+
+async function focusTab(tabId: number): Promise<void> {
+  const t = await browser.tabs.update(tabId, { active: true });
+  if (t?.windowId !== undefined) await browser.windows.update(t.windowId, { focused: true });
 }
 
 void render();

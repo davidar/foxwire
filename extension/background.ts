@@ -330,7 +330,7 @@ async function checkGrant(tabId: number): Promise<void> {
 
 // ---- just-in-time grant requests (DESIGN §3): the popup asks the user; the outcome arrives via permissions.onAdded ----
 
-type Ask = { id: string; pattern: string; origin: string; intent: string; title: string; createdAt: number; waiters: Set<(ok: boolean) => void>; drop?: ReturnType<typeof setTimeout> };
+type Ask = { id: string; pattern: string; origin: string; intent: string; title: string; tabId?: number; createdAt: number; waiters: Set<(ok: boolean) => void>; drop?: ReturnType<typeof setTimeout> };
 const asks = new Map<string, Ask>(); // by pattern
 const declined = new Map<string, number>(); // pattern → when the user said no
 const DECLINE_MEMORY_MS = 10 * 60_000;
@@ -381,7 +381,7 @@ async function requestGrant(p: P, timeoutMs: number): Promise<{ granted: true; p
   let a = asks.get(pattern);
   if (!a) {
     const intent = typeof p.intent === "string" ? capIntent(p.intent.trim()) : "";
-    a = { id: randomHex(8), pattern, origin, intent, title: (tab?.title ?? "").slice(0, 100), createdAt: Date.now(), waiters: new Set() };
+    a = { id: randomHex(8), pattern, origin, intent, title: (tab?.title ?? "").slice(0, 100), ...(tab?.id === undefined ? {} : { tabId: tab.id }), createdAt: Date.now(), waiters: new Set() };
     asks.set(pattern, a);
     badge();
     void browser.browserAction.openPopup().catch(() => {}); // usually refused without a user gesture; the badge is the fallback
