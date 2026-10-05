@@ -13,6 +13,9 @@
   li { display: grid; grid-template-columns: auto 1fr; column-gap: .6rem; padding: .45rem .75rem; cursor: pointer; }
   li + li { border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
   li:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+  li.gone { cursor: default; }
+  li.gone:hover { background: none; }
+  .tab .err { margin: 0 .35rem 0 0; }
   time { opacity: .6; font-variant-numeric: tabular-nums; font-size: .85rem; padding-top: .1rem; }
   .main { overflow-wrap: anywhere; }
   .muted { opacity: .65; }

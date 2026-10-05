@@ -233,7 +233,8 @@ Maybe-later (not v1): `console_messages`, `network_requests` (needs `webRequest`
   load wait, on the new document. `screenshot_*` removes it before the capture and re-shows it after.
 - Switch: `bubbleEnabled` in `storage.local` (default on; options page → Tools). Off means no `insertCSS` at all.
 - Toolbar button: the background keeps the last 50 tab-targeting calls in memory (time, tab, title, method, intent,
-  `ok` or error code); `popup.html` lists them newest first (click → focus that tab) with the pairing status. While
+  `ok` or error code); `popup.html` lists them newest first (click → focus that tab; a row whose tab has since closed says so and is
+  inert, and a failed switch shows the browser's error in the row) with the pairing status. While
   any tab-targeting call runs (intent or not) and for ~4 s after the last one ends, the button's global badge shows
   `…`, so it is visible from whatever tab the user is on; the tooltip reads `foxwire: <intent or method> — <tab
   title>`. A pending grant request's orange `?` (§3) wins over `…`. One function (`badge()`) derives text, colour

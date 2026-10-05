@@ -66,9 +66,12 @@ function row(a: ActivityEntry): HTMLLIElement {
   const main = el("div", "main", a.intent);
   if (!a.intent) main.append(el("span", "muted", a.method));
   if (a.outcome !== "ok") main.append(el("span", "err", a.outcome));
-  li.append(el("time", "", new Date(a.time).toTimeString().slice(0, 8)), main, el("div", "tab", a.title || `tab ${a.tabId}`));
+  const tab = el("div", "tab", a.title || `tab ${a.tabId}`);
+  li.append(el("time", "", new Date(a.time).toTimeString().slice(0, 8)), main, tab);
   li.title = `${a.method} · tab ${a.tabId}`;
-  li.addEventListener("click", () => void focusTab(a.tabId).then(() => window.close(), () => li.classList.add("muted"))); // rejects: tab is gone
+  const gone = (why: string) => (li.classList.add("gone"), tab.prepend(el("span", "err", why)));
+  if (a.closed) gone("tab closed");
+  else li.addEventListener("click", () => void focusTab(a.tabId).then(() => window.close(), (e) => li.classList.contains("gone") || gone((e as Error).message)));
   return li;
 }
 

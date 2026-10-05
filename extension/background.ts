@@ -191,7 +191,7 @@ function afterCall(tabId: number, method: string, intent: string, outcome: strin
   const entry: ActivityEntry = { time: Date.now(), tabId, title: "", method, intent, outcome };
   activity.unshift(entry);
   activity.length = Math.min(activity.length, 50);
-  void browser.tabs.get(tabId).then((t) => (entry.title = (t.title || t.url || "").slice(0, 100)), () => (entry.title = "(closed)"));
+  void browser.tabs.get(tabId).then((t) => (entry.title = (t.title || t.url || "").slice(0, 100)), () => (entry.closed = true));
   if (!intent || method === "requestGrant") return;
   const linger = () => {
     const b = bubbles.get(tabId);
@@ -702,6 +702,7 @@ const METHODS: { [K in keyof ExtMethods]: (p: P, timeoutMs: number) => Promise<E
 // ---- wiring --------------------------------------------------------------------------------------
 
 browser.tabs.onRemoved.addListener((tabId) => {
+  for (const e of activity) if (e.tabId === tabId) e.closed = true; // the popup stops offering to switch to it
   clearTimeout(bubbles.get(tabId)?.timer);
   bubbles.delete(tabId);
   focusFrame.delete(tabId);

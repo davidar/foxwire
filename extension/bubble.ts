@@ -53,4 +53,4 @@ export function bubbleCss(intent: string, a?: Anchor): string {
 }
 
 /** One row of the toolbar popup's activity list (background keeps the last 50, newest first). */
-export interface ActivityEntry { time: number; tabId: number; title: string; method: string; intent: string; outcome: string }
+export interface ActivityEntry { time: number; tabId: number; title: string; method: string; intent: string; outcome: string; closed?: boolean }
